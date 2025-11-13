@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUSANTARA CLIMATE PULSE</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #1a1a2e;
+            --bg-panel: rgba(26, 26, 46, 0.7);
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-cyan: #00ffff;
+            --accent-orange: #ff7f00;
+            --accent-red: #d73027;
+            --border-color: rgba(0, 255, 255, 0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .grid-background {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px; z-index: -1; animation: grid-move 10s linear infinite;
+        }
+        @keyframes grid-move { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
+
+        header { text-align: center; padding: 2rem 1rem; background: linear-gradient(to bottom, var(--bg-secondary), transparent); }
+        header h1 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; color: var(--accent-cyan); text-shadow: 0 0 15px var(--accent-cyan); letter-spacing: 3px; }
+        header p { color: var(--text-secondary); margin-top: 0.5rem; font-style: italic; }
+
+        .dashboard-grid {
+            display: grid; grid-template-columns: 1fr 2.5fr 1fr; grid-template-areas: "left center right";
+            gap: 1.5rem; padding: 0 2rem; max-width: 1600px; margin: 0 auto;
+        }
+
+        .panel {
+            background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem;
+            backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .panel:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0, 255, 255, 0.2); }
+        .left-panel { grid-area: left; } .center-panel { grid-area: center; } .right-panel { grid-area: right; }
+
+        .panel h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; margin-bottom: 1rem; color: var(--accent-orange); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        .chart-container { position: relative; height: 200px; margin-bottom: 1.5rem; }
+        .chart-caption { font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-bottom: 1.5rem; }
+
+        #map { height: 450px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .map-legend { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; font-size: 0.8rem; }
+        .legend-color { display: inline-block; width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; }
+
+        .impact-card { background: rgba(255, 127, 0, 0.1); border-left: 4px solid var(--accent-orange); padding: 1rem; margin-bottom: 1rem; border-radius: 5px; }
+        .impact-card h3 { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .impact-value { font-size: 1.8rem; font-weight: 600; color: var(--accent-orange); }
+        .impact-change { font-size: 0.8rem; color: #fc8d59; }
+
+        footer { text-align: center; padding: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); }
+        footer button {
+            background: var(--bg-secondary); color: var(--accent-cyan); border: 1px solid var(--accent-cyan);
+            padding: 0.8rem 1.5rem; border-radius: 5px; font-family: 'Poppins', sans-serif; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; margin-bottom: 1rem;
+        }
+        footer button:hover { background: var(--accent-cyan); color: var(--bg-primary); box-shadow: 0 0 15px var(--accent-cyan); }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content {
+            background-color: var(--bg-secondary); margin: 5% auto; padding: 2rem; border: 1px solid var(--border-color);
+            border-radius: 10px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto;
+        }
+        .close { color: var(--text-secondary); float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover, .close:focus { color: var(--accent-cyan); }
+        .modal-content h2 { font-family: 'Orbitron', sans-serif; color: var(--accent-cyan); margin-bottom: 1rem; }
+        .modal-content h3 { color: var(--accent-orange); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .modal-content p { line-height: 1.6; margin-bottom: 1rem; }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid { grid-template-columns: 1fr; grid-template-areas: "center" "left" "right"; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-background"></div>
+
+    <header>
+        <h1>NUSANTARA CLIMATE PULSE</h1>
+        <p>Membaca Masa Depan Iklim Kita</p>
+    </header>
+
+    <main class="dashboard-grid">
+        <section class="panel left-panel">
+            <h2>Indikator Global</h2>
+            <div class="chart-container"><canvas id="oniChart"></canvas></div>
+            <p class="chart-caption">Indeks ONI (Oceanic Niño Index) 12 Bulan Terakhir</p>
+            <div class="chart-container"><canvas id="sstChart"></canvas></div>
+            <p class="chart-caption">Anomali Suhu Permukaan Laut (Niño 3.4 Region)</p>
+        </section>
+
+        <section class="panel center-panel">
+            <h2>Peta Dampak El Niño di Nusantara</h2>
+            <div id="map"></div>
+            <div class="map-legend">
+                <span><span class="legend-color" style="background: #d73027;"></span> Defisit Hujan Tinggi</span>
+                <span><span class="legend-color" style="background: #fc8d59;"></span> Defisit Hujan Sedang</span>
+                <span><span class="legend-color" style="background: #fee08b;"></span> Normal</span>
+            </div>
+        </section>
+
+        <section class="panel right-panel">
+            <h2>Dampak Sektor (Estimasi)</h2>
+            <div class="impact-card">
+                <h3>Luas Area Kekeringan</h3>
+                <p class="impact-value">1.25 Juta Ha</p>
+                <p class="impact-change">+15% dari bulan lalu</p>
+            </div>
+            <div class="impact-card">
+                <h3>Produktivitas Padi</h3>
+                <p class="impact-value">-8.5%</p>
+                <p class="impact-change">Proyeksi Gagal Panen</p>
+            </div>
+            <div class="chart-container"><canvas id="impactChart"></canvas></div>
+            <p class="chart-caption">Dampak per Sektor (Indeks Risiko)</p>
+        </section>
+    </main>
+
+    <footer>
+        <button id="infoBtn">Buka Ensiklopedia El Niño</button>
+        <p>Sumber Data: BMKG, NOAA, LAPAN (Simulasi untuk Prototipe)</p>
+    </footer>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>El Niño-Southern Oscillation (ENSO): Siklus Iklim Pasifik</h2>
+            <p>El Niño bukanlah fenomena yang berdiri sendiri, melainkan fase hangat dari siklus iklim global yang dikenal sebagai El Niño-Southern Oscillation (ENSO). ENSO merupakan pola fluktuasi suhu permukaan laut (SPL) dan tekanan udara di atas Samudra Pasifik ekuator yang bersifat siklis.</p>
+            <h3>Mekanisme Fase El Niño:</h3>
+            <p>Secara normal, angin pasat (trade winds) bertiup dari timur ke barat di Pasifik ekuator, mendorong air hangat ke arah Indonesia dan Australia, sehingga SPL di kawasan ini lebih tinggi.</p>
+            <p>Selama fase El Niño, angin pasat melemah atau bahkan berbalik arah. Akibatnya, lapisan air hangat yang seharusnya terkumpul di Nusantara "terdorong" kembali ke arah timur. Tekanan udara tinggi yang terbentuk di atas Nusantara menghambat pembentukan awan hujan.</p>
+            <h3>Implikasi bagi Nusantara:</h3>
+            <p>Inilah sebab utama mengapa El Niño secara konsisten terkait dengan kondisi <strong>kekeringan yang lebih panjang dan intens</strong> di sebagian besar wilayah Indonesia, terutama di bagian selatan ekuator seperti Jawa, Bali, Nusa Tenggara, dan sebagian Sumatera.</p>
+            <p><em>Sumber: Badan Meteorologi, Klimatologi, dan Geofisika (BMKG), National Oceanic and Atmospheric Administration (NOAA).</em></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const map = L.map('map').setView([-2.5, 118], 5);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>', subdomains: 'abcd', maxZoom: 20
+            }).addTo(map);
+            const provincesData = { "type": "FeatureCollection", "features": [
+                { "type": "Feature", "properties": { "name": "Jawa Timur", "rainfall_anomaly": -65 }, "geometry": { "type": "Point", "coordinates": [112.5, -7.5] } },
+                { "type": "Feature", "properties": { "name": "Nusa Tenggara Barat", "rainfall_anomaly": -80 }, "geometry": { "type": "Point", "coordinates": [116.5, -8.5] } },
+                { "type": "Feature", "properties": { "name": "Kalimantan Tengah", "rainfall_anomaly": -45 }, "geometry": { "type": "Point", "coordinates": [113.5, -1.5] } },
+                { "type": "Feature", "properties": { "name": "Sumatera Selatan", "rainfall_anomaly": -55 }, "geometry": { "type": "Point", "coordinates": [104, -3] } },
+                { "type": "Feature", "properties": { "name": "Sulawesi Selatan", "rainfall_anomaly": -40 }, "geometry": { "type": "Point", "coordinates": [120, -4] } }
+            ]};
+            function getColor(v) { return v > -50 ? '#fee08b' : v > -70 ? '#fc8d59' : '#d73027'; }
+            function onEachFeature(f, l) { if (f.properties && f.properties.name) { l.bindPopup(`<b>${f.properties.name}</b><br>Anomali Curah Hujan: ${f.properties.rainfall_anomaly}%`); } }
+            L.geoJSON(provincesData, {
+                pointToLayer: function (f, ll) { return L.circleMarker(ll, { radius: 15, fillColor: getColor(f.properties.rainfall_anomaly), color: "#fff", weight: 1, opacity: 1, fillOpacity: 0.8 }); },
+                onEachFeature: onEachFeature
+            }).addTo(map);
+
+            Chart.defaults.color = '#a0a0a0'; Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+            new Chart(document.getElementById('oniChart').getContext('2d'), {
+                type: 'line', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'], datasets: [{ label: 'Indeks ONI', data: [0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1], borderColor: '#ff7f00', backgroundColor: 'rgba(255, 127, 0, 0.2)', tension: 0.4, fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Nilai: ${c.parsed.y} °C` } } }, scales: { y: { beginAtZero: false, title: { display: true, text: 'Indeks (°C)' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } } } }
+            });
+            new Chart(document.getElementById('sstChart').getContext('2d'), {
+                type: 'bar', data: { labels: ['Niño 1+2', 'Niño 3', 'Niño 3.4', 'Niño 4'], datasets: [{ label: 'Anomali SPL', data: [2.5, 2.2, 2.1, 1.5], backgroundColor: ['rgba(255, 99, 132, 0.5)', 'rgba(255, 159, 64, 0.5)', 'rgba(255, 205, 86, 0.5)', 'rgba(75, 192, 192, 0.5)'], borderColor: ['rgb(255, 99, 132)', 'rgb(255, 159, 64)', 'rgb(255, 205, 86)', 'rgb(75, 192, 192)'], borderWidth: 1 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Anomali: +${c.parsed.y} °C` } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Anomali (°C)' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } } } }
+            });
+            new Chart(document.getElementById('impactChart').getContext('2d'), {
+                type: 'radar', data: { labels: ['Pertanian', 'Kesehatan', 'Kehutanan', 'Ekonomi', 'Air Bersih'], datasets: [{ label: 'Indeks Risiko', data: [85, 60, 90, 70, 75], backgroundColor: 'rgba(0, 255, 255, 0.2)', borderColor: '#00ffff', pointBackgroundColor: '#00ffff', pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: '#00ffff' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { r: { angleLines: { color: 'rgba(255, 255, 255, 0.1)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, pointLabels: { color: '#e0e0e0' }, ticks: { backdropColor: 'transparent', color: '#a0a0a0' } } } }
+            });
+
+            const modal = document.getElementById("infoModal"); const btn = document.getElementById("infoBtn"); const span = document.getElementsByClassName("close")[0];
+            btn.onclick = () => modal.style.display = "block";
+            span.onclick = () => modal.style.display = "none";
+            window.onclick = (event) => { if (event.target == modal) { modal.style.display = "none"; } };
+        });
+    </script>
+</body>
+</html>
