@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUSANTARA CLIMATE PULSE</title>
+    <!-- Memuat library eksternal untuk peta dan grafik -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- AWAL GAYA VISUAL (CSS) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@400;600;700&display=swap');
+        :root { 
+            --bg-primary: #0a0a0f; 
+            --bg-secondary: #1a1a2e; 
+            --bg-panel: rgba(26, 26, 46, 0.9); 
+            --bg-article: rgba(255, 255, 255, 0.05); 
+            --text-primary: #e0e0e0; 
+            --text-secondary: #a0a0a0; 
+            --accent-cyan: #00ffff; 
+            --accent-orange: #ff7f00; 
+            --accent-red: #d73027; 
+            --accent-green: #2ca02c; 
+            --border-color: rgba(0, 255, 255, 0.3); 
+        }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        html { 
+            scroll-behavior: smooth; 
+        }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: var(--bg-primary); 
+            color: var(--text-primary); 
+            overflow-x: hidden; 
+            position: relative; 
+            min-height: 100vh;
+        }
+        .grid-background { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-image: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px); 
+            background-size: 50px 50px; 
+            z-index: -2; 
+            animation: grid-move 10s linear infinite; 
+        }
+        .orbital-bg { 
+            position: fixed; 
+            width: 500px; 
+            height: 500px; 
+            border-radius: 50%; 
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, rgba(26, 26, 46, 0) 70%); 
+            top: -250px; 
+            right: -250px; 
+            z-index: -1; 
+            animation: float 20s infinite ease-in-out; 
+        }
+        @keyframes grid-move { 
+            0% { transform: translate(0, 0); } 
+            100% { transform: translate(50px, 50px); } 
+        }
+        @keyframes float { 
+            0%, 100% { transform: translateY(0) rotate(0deg); } 
+            50% { transform: translateY(-20px) rotate(180deg); } 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; } 
+            to { opacity: 1; } 
+        }
+        @keyframes fadeInUp { 
+            from { opacity: 0; transform: translateY(30px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .fade-in { 
+            opacity: 0; 
+            animation: fadeIn 1.5s ease-out forwards; 
+        }
+        .fade-in-up { 
+            opacity: 0; 
+            transform: translateY(30px); 
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out; 
+        }
+        .fade-in-up.visible { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 0 1rem; 
+        }
+        header { 
+            text-align: center; 
+            padding: 4rem 1rem 2rem; 
+            background: linear-gradient(to bottom, rgba(26, 26, 46, 0.8), transparent); 
+        }
+        header h1 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 3rem; 
+            color: var(--accent-cyan); 
+            text-shadow: 0 0 25px var(--accent-cyan); 
+            letter-spacing: 4px; 
+            min-height: 3.5rem; 
+        }
+        header p { 
+            color: var(--text-secondary); 
+            margin-top: 1rem; 
+            font-style: italic; 
+            font-size: 1.1rem; 
+        }
+        .hero-section { 
+            padding: 3rem 2rem; 
+            text-align: center; 
+        }
+        .hero-content { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+        .hero-section h2 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.8rem; 
+            color: var(--accent-orange); 
+            margin-bottom: 1rem; 
+            text-shadow: 0 0 10px var(--accent-orange); 
+        }
+        .hero-section p { 
+            font-size: 1.1rem; 
+            line-height: 1.8; 
+            color: var(--text-primary); 
+        }
+        .cta-button { 
+            display: inline-block; 
+            background: linear-gradient(45deg, var(--bg-secondary), rgba(0, 255, 255, 0.2)); 
+            color: var(--accent-cyan); 
+            border: 1px solid var(--accent-cyan); 
+            padding: 1rem 2rem; 
+            border-radius: 50px; 
+            font-family: 'Poppins', sans-serif; 
+            font-weight: 600; 
+            text-decoration: none; 
+            transition: all 0.4s ease; 
+            margin-top: 2rem; 
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3); 
+        }
+        .cta-button:hover { 
+            background: var(--accent-cyan); 
+            color: var(--bg-primary); 
+            box-shadow: 0 0 30px var(--accent-cyan), 0 0 60px var(--accent-cyan); 
+            transform: translateY(-5px) scale(1.05); 
+        }
+        
+        /* --- STYLES FOR THE DETAILED EXPLANATION SECTION --- */
+        .explanation-section { 
+            padding: 4rem 0; 
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); 
+        }
+        .explanation-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 2rem; 
+        }
+        .article-card { 
+            background: var(--bg-article); 
+            border: 1px solid var(--border-color); 
+            border-radius: 15px; 
+            padding: 2rem; 
+            backdrop-filter: blur(10px); 
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        }
+        .article-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.1); 
+        }
+        .article-card h3 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.3rem; 
+            color: var(--accent-cyan); 
+            margin-bottom: 1rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+        }
+        .article-card h3::before { 
+            font-size: 1.5rem; 
+        }
+        .article-card:nth-child(1) h3::before { content: '🔬'; }
+        .article-card:nth-child(2) h3::before { content: '🌍'; }
+        .article-card:nth-child(3) h3::before { content: '⚖️'; }
+        .article-card:nth-child(4) h3::before { content: '🌡️'; }
+        .article-card p { 
+            line-height: 1.7; 
+            margin-bottom: 1rem; 
+            color: var(--text-secondary); 
+        }
+        .article-card p strong { 
+            color: var(--text-primary); 
+            font-weight: 600; 
+        }
+        .article-card ul { 
+            list-style: none; 
+            padding-left: 1rem; 
+        }
+        .article-card ul li { 
+            position: relative; 
+            margin-bottom: 0.5rem; 
+            padding-left: 1.5rem; 
+        }
+        .article-card ul li::before { 
+            content: '▸'; 
+            position: absolute; 
+            left: 0; 
+            color: var(--accent-orange); 
+            font-weight: bold; 
+        }
+        .article-card blockquote { 
+            border-left: 4px solid var(--accent-orange); 
+            padding-left: 1rem; 
+            margin: 1.5rem 0; 
+            font-style: italic; 
+            color: var(--text-primary); 
+            background: rgba(255, 127, 0, 0.05); 
+            border-radius: 0 5px 5px 0; 
+        }
+
+        /* --- STYLES FOR THE NEW SOLUTIONS SECTION --- */
+        #solutions-section { 
+            padding: 4rem 0; 
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); 
+        }
+        #solutions-section h2 { 
+            text-align: center; 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 2rem; 
+            color: var(--accent-green); 
+            margin-bottom: 2rem; 
+            text-shadow: 0 0 15px var(--accent-green); 
+        }
+        .solutions-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 2rem; 
+        }
+        .solution-card { 
+            background: var(--bg-panel); 
+            border: 1px solid var(--border-color); 
+            border-radius: 15px; 
+            padding: 2rem; 
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; 
+        }
+        .solution-card:hover { 
+            transform: translateY(-8px); 
+            box-shadow: 0 15px 40px rgba(44, 160, 101, 0.2); 
+            border-color: var(--accent-green); 
+        }
+        .solution-card h3 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.3rem; 
+            color: var(--text-primary); 
+            margin-bottom: 1rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+        }
+        .solution-card h3::before { 
+            font-size: 1.5rem; 
+        }
+        .solution-card:nth-child(1) h3::before { content: '👤'; }
+        .solution-card:nth-child(2) h3::before { content: '👨‍👩‍👦‍👦'; }
+        .solution-card:nth-child(3) h3::before { content: '🏛️'; }
+        .solution-card:nth-child(4) h3::before { content: '💡'; }
+        .solution-card p { 
+            line-height: 1.7; 
+            color: var(--text-secondary); 
+        }
+        .solution-card ul { 
+            list-style: none; 
+            padding-left: 1rem; 
+        }
+        .solution-card ul li { 
+            position: relative; 
+            margin-bottom: 0.5rem; 
+            padding-left: 1.5rem; 
+        }
+        .solution-card ul li::before { 
+            content: '✓'; 
+            position: absolute; 
+            left: 0; 
+            color: var(--accent-green); 
+            font-weight: bold; 
+        }
+
+        /* --- STYLES FOR THE INTERACTIVE DASHBOARD --- */
+        .dashboard { 
+            padding: 2rem 0; 
+        }
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 2rem; 
+        }
+        .panel { 
+            background: var(--bg-panel); 
+            border: 1px solid var(--border-color); 
+            border-radius: 10px; 
+            padding: 1.5rem; 
+        }
+        .panel h2 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.5rem; 
+            color: var(--accent-orange); 
+            margin-bottom: 1rem; 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 0.5rem; 
+        }
+        .chart-container { 
+            position: relative; 
+            height: 300px; 
+            margin-top: 1rem; 
+        }
+        #map { 
+            height: 400px; 
+            border-radius: 8px; 
+            margin-top: 1rem; 
+        }
+        .caption { 
+            font-size: 0.9rem; 
+            color: var(--text-secondary); 
+            text-align: center; 
+            margin-top: 0.5rem; 
+            font-style: italic; 
+        }
+        .data-source { 
+            font-size: 0.8rem; 
+            color: var(--text-secondary); 
+            text-align: right; 
+            margin-top: 1rem; 
+        }
+        
+        #enso-data-section { 
+            padding: 2rem 0 4rem; 
+        }
+        #enso-data-section h2 { 
+            text-align: center; 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.8rem; 
+            color: var(--accent-cyan); 
+            margin-bottom: 2rem; 
+        }
+        .enso-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 2rem; 
+        }
+        
+        .timeline-section { 
+            text-align: center; 
+            padding: 2rem; 
+            margin-top: 2rem; 
+            border-top: 1px solid var(--border-color); 
+        }
+        .timeline-section h2 { 
+            font-family: 'Orbitron', sans-serif; 
+            color: var(--accent-cyan); 
+            margin-bottom: 1.5rem; 
+            text-shadow: 0 0 15px var(--accent-cyan); 
+        }
+        .timeline-container { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 1rem; 
+            max-width: 500px; 
+            margin: 0 auto; 
+        }
+        .timeline-container span { 
+            font-family: 'Orbitron', sans-serif; 
+            color: var(--text-secondary); 
+            font-weight: 600; 
+        }
+        #timelineSlider { 
+            -webkit-appearance: none; 
+            appearance: none; 
+            width: 100%; 
+            height: 8px; 
+            border-radius: 5px; 
+            background: linear-gradient(to right, var(--accent-red), var(--bg-secondary), var(--accent-cyan)); 
+            outline: none; 
+            opacity: 0.9; 
+            transition: opacity 0.2s; 
+        }
+        #timelineSlider:hover { 
+            opacity: 1; 
+        }
+        #timelineSlider::-webkit-slider-thumb { 
+            -webkit-appearance: none; 
+            appearance: none; 
+            width: 25px; 
+            height: 25px; 
+            border-radius: 50%; 
+            background: var(--accent-cyan); 
+            cursor: pointer; 
+            box-shadow: 0 0 15px var(--accent-cyan); 
+            transition: all 0.2s ease; 
+        }
+        #timelineSlider::-webkit-slider-thumb:hover { 
+            transform: scale(1.2); 
+        }
+        #timelineSlider::-moz-range-thumb { 
+            width: 25px; 
+            height: 25px; 
+            border-radius: 50%; 
+            background: var(--accent-cyan); 
+            cursor: pointer; 
+            box-shadow: 0 0 15px var(--accent-cyan); 
+            transition: all 0.2s ease; 
+        }
+        #timelineSlider::-moz-range-thumb:hover { 
+            transform: scale(1.2); 
+        }
+        #selectedYearLabel { 
+            margin-top: 1rem; 
+            color: var(--text-secondary); 
+        }
+        #selectedYearLabel strong { 
+            color: var(--text-primary); 
+        }
+
+        /* --- STYLES FOR HISTORICAL DATA SECTION --- */
+        #historical-data-section { 
+            padding: 4rem 0; 
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); 
+        }
+        #historical-data-section h2 { 
+            text-align: center; 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 2rem; 
+            color: var(--accent-cyan); 
+            margin-bottom: 2rem; 
+            text-shadow: 0 0 15px var(--accent-cyan); 
+        }
+        .historical-content { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 2rem; 
+            margin-bottom: 2rem; 
+        }
+        .historical-panel { 
+            background: var(--bg-panel); 
+            border: 1px solid var(--border-color); 
+            border-radius: 15px; 
+            padding: 2rem; 
+        }
+        .historical-panel h3 { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 1.3rem; 
+            color: var(--accent-orange); 
+            margin-bottom: 1rem; 
+        }
+        .historical-panel p { 
+            line-height: 1.7; 
+            color: var(--text-secondary); 
+            margin-bottom: 1rem; 
+        }
+        .el-nino-events { 
+            margin-top: 1.5rem; 
+        }
+        .el-nino-events h4 { 
+            font-family: 'Poppins', sans-serif; 
+            font-size: 1.1rem; 
+            color: var(--text-primary); 
+            margin-bottom: 0.5rem; 
+        }
+        .el-nino-events ul { 
+            list-style: none; 
+            padding-left: 0; 
+        }
+        .el-nino-events ul li { 
+            position: relative; 
+            margin-bottom: 0.5rem; 
+            padding-left: 1.5rem; 
+            color: var(--text-secondary); 
+        }
+        .el-nino-events ul li::before { 
+            content: '🌡️'; 
+            position: absolute; 
+            left: 0; 
+        }
+        .el-nino-events .strong { 
+            color: var(--accent-orange); 
+            font-weight: 600; 
+        }
+        .el-nino-events .moderate { 
+            color: var(--text-primary); 
+            font-weight: 500; 
+        }
+        .el-nino-events .weak { 
+            color: var(--text-secondary); 
+        }
+        .historical-images { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 1.5rem; 
+            margin-top: 2rem; 
+        }
+        .historical-image-card { 
+            background: var(--bg-article); 
+            border: 1px solid var(--border-color); 
+            border-radius: 10px; 
+            overflow: hidden; 
+            transition: transform 0.3s ease; 
+        }
+        .historical-image-card:hover { 
+            transform: translateY(-5px); 
+        }
+        .historical-image-card img { 
+            width: 100%; 
+            height: 180px; 
+            object-fit: cover; 
+        }
+        .historical-image-card .caption { 
+            font-size: 0.85rem; 
+            color: var(--text-secondary); 
+            text-align: center; 
+            padding: 0.75rem; 
+            font-style: normal; 
+            line-height: 1.4; 
+        }
+        .historical-image-card .year { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 0.9rem; 
+            color: var(--accent-cyan); 
+            text-align: center; 
+            padding: 0.5rem 0.75rem 0; 
+            font-weight: 600; 
+        }
+        
+        /* --- INFO CARD STYLES --- */
+        .info-card {
+            background: var(--bg-article); 
+            border: 1px solid var(--border-color); 
+            border-radius: 10px; 
+            overflow: hidden; 
+            transition: transform 0.3s ease; 
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .info-card:hover { 
+            transform: translateY(-5px); 
+        }
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .info-card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-orange));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+        .info-card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent-cyan);
+        }
+        .info-card-content {
+            flex-grow: 1;
+        }
+        .info-card-data {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .info-data-item {
+            flex: 1 0 45%;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+            text-align: center;
+        }
+        .info-data-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .info-data-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        .info-card-footer {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* --- FOOTER CREDIT STYLES --- */
+        .footer-credit {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            z-index: 1000;
+            background-color: rgba(10, 10, 15, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* --- ERROR MESSAGE STYLES --- */
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            z-index: 9999;
+            max-width: 80%;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        /* --- RESPONSIVE DESIGN --- */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .explanation-grid, .dashboard-grid, .enso-grid, .solutions-grid, .historical-content { grid-template-columns: 1fr; }
+            .orbital-bg { width: 300px; height: 300px; }
+        }
+        /* --- AKHIR GAYA VISUAL (CSS) --- */
+    </style>
+</head>
+<body>
+
+    <div class="grid-background"></div>
+    <div class="orbital-bg"></div>
+
+    <header>
+        <h1>NUSANTARA CLIMATE PULSE</h1>
+        <p>Memahami Fenomena Global yang Membentuk Masa Depan Iklim Nusantara</p>
+    </header>
+
+    <section class="hero-section fade-in">
+        <div class="container hero-content">
+            <h2>El Niño: Denyut Nadi Iklim Kita</h2>
+            <p>
+                Selamat datang di <strong>NUSANTARA CLIMATE PULSE</strong>. Platform ini dirancang untuk membongkar misteri di balik El Niño—fenomena iklim yang tak hanya memengaruhi cuaca, tetapi juga kehidupan jutaan orang, terutama di Indonesia. Mari kita mulai perjalanan untuk memahami denyut nadi planet kita.
+            </p>
+            <a href="#solutions" class="cta-button">Temukan Solusinya</a>
+        </div>
+    </section>
+
+    <!-- SECTION FOR DETAILED SCIENTIFIC EXPLANATION -->
+    <section id="explanation" class="explanation-section">
+        <div class="container explanation-grid">
+            <article class="article-card fade-in-up">
+                <h3>Mekanisme El Niño</h3>
+                <p>Bayangkan Samudra Pasifik sebagai sebuah mesin konveksi raksasa. El Niño adalah salah satu dari dua "mode operasi" utamanya. Semuanya dimulai dari <strong>pelemahan angin pasat</strong> yang biasa bertiup dari timur ke barat.</p>
+                <p>Saat angin melemah, massa air hangat yang biasanya terkumpul di Indonesia "tergelincir" kembali ke timur. Ini memicu <strong>lingkaran umpan balik (feedback loop) yang kuat</strong>: pergeseran air hangat mengubah pola hujan, yang kemudian semakin melemahkan angin pasat, memperkuat El Niño.</p>
+                <blockquote>El Niño terjadi karena pelemahan kecil pada angin pasat yang diperkuat oleh lingkaran umpan balik antara laut dan atmosfer, hingga seluruh sistem Pasifik berbalik arah.</blockquote>
+            </article>
+            <article class="article-card fade-in-up">
+                <h3>Riak Global</h3>
+                <p>Karena Pasifik adalah pemanas cuaca global terbesar, perubahan mode operasinya memiliki riak yang luar biasa di seluruh dunia:</p>
+                <ul>
+                    <li><strong>Nusantara:</strong> Kekeringan parah, suhu tinggi, dan risiko kebakaran hutan yang melonjak.</li>
+                    <li><strong>Amerika:</strong> Banjir di pesisir Peru/Ekuador, perubahan pola cuaca di AS.</li>
+                    <li><strong>Asia &amp; Australia:</strong> Musim hujan (monsun) menjadi lebih lemah dan tidak teratur.</li>
+                    <li><strong>Global:</strong> Tahun-tahun dengan El Niño kuat hampir selalu tercatat sebagai tahun-tahun terpanas.</li>
+                </ul>
+            </article>
+            <article class="article-card fade-in-up">
+                <h3>Mengapa Fenomena Ini Penting?</h3>
+                <p>El Niño bukanlah "monster", melainkan <strong>mekanisme penyeimbang yang fundamental</strong> untuk iklim Bumi.</p>
+                <p><strong>1. Sebagai "Klep Panas" Planet:</strong> El Niño adalah cara utama planet melepaskan kelebihan panas dari daerah tropis ke atmosfer, mencegah terjadinya overheat.</p>
+                <p><strong>2. Mendistribusikan Ulang Energi:</strong> Ia adalah bagian dari cara sistem iklim Bumi mendistribusikan ulang energi dan panas dari satu wilayah ke wilayah lain untuk menjaga keseimbangan global.</p>
+            </article>
+            <article class="article-card fade-in-up">
+                <h3>El Niño &amp; Perubahan Iklim</h3>
+                <p><strong>El Niño adalah siklus alami, tetapi perubahan iklim sedang memperkuatnya.</strong> Pemanasan global akibat emisi gas rumah kaca menciptakan "dasar" yang lebih hangat bagi El Niño.</p>
+                <p>Lautan yang lebih hangat memberikan "bahan bakar" ekstra untuk El Niño, yang dapat membuatnya lebih kuat. Atmosfer yang lebih hangat dapat menahan lebih banyak uap air, yang berarti hujan bisa lebih deras dan kekeringan bisa lebih parah.</p>
+                <blockquote>Analoginya: El Niño adalah drummer di sebuah band. Perubahan iklim seperti menaikkan volume seluruh band. Drummernya tetap sama, tetapi suaranya menjadi jauh lebih keras.</blockquote>
+            </article>
+        </div>
+    </section>
+
+    <!-- NEW SECTION FOR HISTORICAL DATA -->
+    <section id="historical-data-section">
+        <div class="container">
+            <h2>Data Historis El Niño</h2>
+            <p style="text-align: center; max-width: 800px; margin: 0 auto 2rem; color: var(--text-secondary); font-size: 1.1rem;">
+                Data dan visualisasi pada bagian ini bersumber dari institusi terkemuka seperti <strong>NASA</strong> dan <strong>NOAA</strong> untuk memastikan akurasi dan keandalan informasi yang disajikan.
+            </p>
+            <div class="historical-content">
+                <div class="historical-panel fade-in-up">
+                    <h3>Sejarah El Niño</h3>
+                    <p>El Niño telah diamati dan dicatat sejak abad ke-16, namun pemahaman ilmiah modern tentang fenomena ini baru berkembang pada abad ke-20. Data instrumental yang akurat mulai dikumpulkan secara sistematis sejak tahun 1950-an.</p>
+                    <p>Menurut data dari <strong>NASA Sea Level</strong>, El Niño adalah bagian dari osilasi El Niño-Southern (ENSO) yang terjadi secara periodik setiap 2-7 tahun. Fenomena ini memiliki dampak signifikan pada pola cuaca global, termasuk di Indonesia.</p>
+                    <p>Indeks Oceanic Niño (ONI) adalah metrik utama yang digunakan untuk mengidentifikasi dan mengukur kekuatan El Niño. Nilai ONI di atas +0.5°C menunjukkan kondisi El Niño, dengan nilai di atas +1.5°C dianggap sebagai El Niño kuat.</p>
+                    <p style="font-size: 0.85rem; margin-top: 1.5rem;"><strong>Sumber Data:</strong> Sejarah dan konsep ENSO didasarkan pada publikasi dari <em>NASA Jet Propulsion Laboratory</em> dan <em>NOAA Climate.gov</em>.</p>
+                </div>
+                <div class="historical-panel fade-in-up">
+                    <h3>Peristiwa El Niño Signifikan</h3>
+                    <div class="el-nino-events">
+                        <h4>El Niño Kuat (ONI > 1.5°C)</h4>
+                        <ul>
+                            <li class="strong">1982-1983: Salah satu El Niño terkuat yang pernah tercatat</li>
+                            <li class="strong">1997-1998: El Niño terkuat abad ke-20</li>
+                            <li class="strong">2015-2016: El Niño kuat yang memecahkan rekor suhu global</li>
+                        </ul>
+                        <h4>El Niño Sedang (ONI 1.0-1.5°C)</h4>
+                        <ul>
+                            <li class="moderate">1957-1958: El Niño pertama yang dipahami secara ilmiah</li>
+                            <li class="moderate">1972-1973: Menyebabkan kekeringan parah di Sahel Afrika</li>
+                            <li class="moderate">2002-2003: Memicu kebakaran hutan di Australia</li>
+                            <li class="moderate">2009-2010: Berdampak pada curah hujan di Asia Tenggara</li>
+                        </ul>
+                    </div>
+                    <p style="font-size: 0.85rem; margin-top: 1.5rem;"><strong>Sumber Data:</strong> Klasifikasi kekuatan El Niño mengacu pada standar <em>NOAA Climate Prediction Center (CPC)</em> berdasarkan Indeks ONI.</p>
+                </div>
+            </div>
+            
+            <div class="historical-images">
+                <div class="info-card fade-in-up">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">🌡️</div>
+                        <div class="info-card-title">1982-1983</div>
+                    </div>
+                    <div class="info-card-content">
+                        <p>Salah satu El Niño terkuat yang pernah tercatat, menyebabkan anomali suhu permukaan laut yang signifikan di Samudra Pasifik tengah-timur.</p>
+                        <div class="info-card-data">
+                            <div class="info-data-item">
+                                <div class="info-data-label">Intensitas</div>
+                                <div class="info-data-value">Kuat</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Puncak ONI</div>
+                                <div class="info-data-value">+2.3°C</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Durasi</div>
+                                <div class="info-data-value">14 bulan</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Dampak Indonesia</div>
+                                <div class="info-data-value">Kekeringan parah</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card-footer">
+                        Sumber: NOAA Earth System Research Laboratories
+                    </div>
+                </div>
+                <div class="info-card fade-in-up">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">🔥</div>
+                        <div class="info-card-title">1997-1998</div>
+                    </div>
+                    <div class="info-card-content">
+                        <p>El Niño terkuat abad ke-20 yang menyebabkan kebakaran hutan besar di Indonesia dan bencana iklim global yang meluas.</p>
+                        <div class="info-card-data">
+                            <div class="info-data-item">
+                                <div class="info-data-label">Intensitas</div>
+                                <div class="info-data-value">Sangat Kuat</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Puncak ONI</div>
+                                <div class="info-data-value">+2.5°C</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Durasi</div>
+                                <div class="info-data-value">15 bulan</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Dampak Indonesia</div>
+                                <div class="info-data-value">Kebakaran hutan luas</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card-footer">
+                        Sumber: NOAA National Centers for Environmental Information
+                    </div>
+                </div>
+                <div class="info-card fade-in-up">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">🌡️</div>
+                        <div class="info-card-title">2015-2016</div>
+                    </div>
+                    <div class="info-card-content">
+                        <p>El Niño kuat yang berkontribusi pada rekor suhu global tertinggi dan menyebabkan berbagai bencana iklim di seluruh dunia.</p>
+                        <div class="info-card-data">
+                            <div class="info-data-item">
+                                <div class="info-data-label">Intensitas</div>
+                                <div class="info-data-value">Kuat</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Puncak ONI</div>
+                                <div class="info-data-value">+2.3°C</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Durasi</div>
+                                <div class="info-data-value">18 bulan</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Dampak Indonesia</div>
+                                <div class="info-data-value">Kekeringan berat</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card-footer">
+                        Sumber: Climate.gov
+                    </div>
+                </div>
+                <div class="info-card fade-in-up">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">📊</div>
+                        <div class="info-card-title">Perbandingan Historis</div>
+                    </div>
+                    <div class="info-card-content">
+                        <p>Grafik Indeks ONI (Oceanic Niño Index) dari tahun 1950 hingga sekarang, menunjukkan siklus El Niño (merah) dan La Niña (biru) yang terjadi secara periodik.</p>
+                        <div class="info-card-data">
+                            <div class="info-data-item">
+                                <div class="info-data-label">Frekuensi</div>
+                                <div class="info-data-value">2-7 tahun</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Total Kejadian</div>
+                                <div class="info-data-value">23 El Niño</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Rata-rata Durasi</div>
+                                <div class="info-data-value">9-12 bulan</div>
+                            </div>
+                            <div class="info-data-item">
+                                <div class="info-data-label">Tren Terkini</div>
+                                <div class="info-data-value">Meningkat</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card-footer">
+                        Sumber: NOAA Climate Prediction Center (CPC)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW SECTION FOR SOLUTIONS -->
+    <section id="solutions-section">
+        <div class="container">
+            <h2>Solusi &amp; Adaptasi: Menjawab Tantangan El Niño</h2>
+            <p style="text-align: center; max-width: 800px; margin: 0 auto 2rem; color: var(--text-secondary); font-size: 1.1rem;">
+                Meskipun El Niño adalah kekuatan alam yang besar, manusia tidak tinggal diam. Dengan pemahaman, persiapan, dan inovasi, kita dapat mengurangi risiko dan beradaptasi secara efektif.
+            </p>
+            <div class="solutions-grid">
+                <article class="solution-card fade-in-up">
+                    <h3>Tingkat Individu &amp; Rumah Tangga</h3>
+                    <p>Tindakan kecil yang kita lakukan sehari-hari dapat memberikan dampak besar secara kolektif.</p>
+                    <ul>
+                        <li><strong>Hemat Air:</strong> Perbaiki keran air yang bocor, gunakan air kembali, dan kumpulkan air hujan.</li>
+                        <li><strong>Siapkan Darurat:</strong> Miliki "go-bag" dengan kebutuhan pokok, obat-obatan, dan dokumen penting.</li>
+                        <li><strong>Pantau Informasi:</strong> Ikuti perkembangan cuaca dari BMKG dan sumber terpercaya lainnya.</li>
+                    </ul>
+                </article>
+                <article class="solution-card fade-in-up">
+                    <h3>Tingkat Komunitas</h3>
+                    <p>Gotong-royong adalah kunci ketahanan kolektif dalam menghadapi bencana.</p>
+                    <ul>
+                        <li><strong>Sistem Peringatan Dini:</strong> Bentuk kelompok siaga untuk membagikan informasi dan bantuan.</li>
+                        <li><strong>Pertanian Berkelanjutan:</strong> Galakkan pertanian organik komunal untuk ketahanan pangan lokal.</li>
+                        <li><strong>Edukasi Publik:</strong> Adakan lokakarya atau sesi diskusi tentang kesiapsiagaan menghadapi kekeringan.</li>
+                    </ul>
+                </article>
+                <article class="solution-card fade-in-up">
+                    <h3>Tingkat Pemerintah &amp; Kebijakan</h3>
+                    <p>Peran pemerintah sangat krusial dalam mitigasi jangka panjang dan manajemen bencana.</p>
+                    <ul>
+                        <li><strong>Manajemen Sumber Daya Air:</strong> Investasi dalam bendungan, waduk, dan irigasi yang efisien.</li>
+                        <li><strong>Jaringan Pengurangan Risiko Bencana:</strong> Sistem peringatan dini yang terintegrasi dan rencana evakuasi yang jelas.</li>
+                        <li><strong>Dukungan Sektor Pertanian:</strong> Asuransi untuk petani, subsidi bibit unggul tahan kekeringan, dan program diversifikasi ekonomi.</li>
+                    </ul>
+                </article>
+                <article class="solution-card fade-in-up">
+                    <h3>Inovasi &amp; Teknologi</h3>
+                    <p>Sains dan teknologi adalah alat yang ampuh untuk meningkatkan ketahanan kita.</p>
+                    <ul>
+                        <li><strong>Prediksi Cuaca Akurat:</strong> Mengembangkan model cuaca superkomputer untuk prakiraan yang lebih awal dan akurat.</li>
+                        <li><strong>Teknologi Pertanian Canggih:</strong> Drone dan sensor IoT untuk pertanian presisi yang hemat sumber daya.</li>
+                        <li><strong>Energi Terbarukan:</strong> Mengurangi emisi gas rumah kaca untuk memperlambat laju perubahan iklim.</li>
+                    </ul>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <main id="dashboard" class="dashboard">
+        <div class="container dashboard-grid">
+            <div class="panel fade-in-up">
+                <h2>Peta Dampak Kekeringan</h2>
+                <div id="map"></div>
+                <p class="caption">Klik pada lingkaran untuk melihat detail anomali curah hujan di provinsi tersebut.</p>
+            </div>
+            <div class="panel fade-in-up">
+                <h2>Indeks ONI (Oceanic Niño Index)</h2>
+                <div class="chart-container"><canvas id="oniChart"></canvas></div>
+                <p class="caption">Grafik ini menunjukkan kekuatan El Niño. Nilai di atas +0.5°C menunjukkan fase El Niño.</p>
+            </div>
+        </div>
+    </main>
+
+    <section id="enso-data-section">
+        <div class="container">
+            <h2>Pusat Data ENSO</h2>
+            <div class="enso-grid">
+                <div class="panel fade-in-up">
+                    <h3>Anomali Suhu Permukaan Laut (SST)</h3>
+                    <div class="chart-container"><canvas id="sstAnomalyChart"></canvas></div>
+                    <p class="caption">Pada El Niño, region Niño 3.4 (tengah-timur) mengalami pemanasan signifikan.</p>
+                    <p class="data-source">Sumber: <a href="https://psl.noaa.gov/data/gridded/data.cobe.html" target="_blank" style="color: var(--accent-cyan);">NOAA Physical Sciences Laboratory (PSL)</a></p>
+                </div>
+                <div class="panel fade-in-up">
+                    <h3>Indeks Osilasi Selatan (SOI)</h3>
+                    <div class="chart-container"><canvas id="soiChart"></canvas></div>
+                    <p class="caption">Nilai negatif yang konsisten adalah indikator kuat El Niño (angin pasat melemah).</p>
+                    <p class="data-source">Sumber: <a href="https://www.cpc.ncep.noaa.gov/data/indices/soi/" target="_blank" style="color: var(--accent-cyan);">NOAA Climate Prediction Center (CPC)</a></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="timeline-section">
+        <div class="container">
+            <h2>Linimasa Waktu: Jelajahi Data Historis &amp; Terkini</h2>
+            <div class="timeline-container">
+                <span>1950</span>
+                <input type="range" id="timelineSlider" min="0" max="15" value="15" step="1">
+                <span>2024</span>
+            </div>
+            <p id="selectedYearLabel">Tahun yang Dipilih: <strong>2023-2024 (El Niño Sedang)</strong></p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p style="text-align: center; padding: 2rem; border-top: 1px solid var(--border-color);">
+                <strong class="editable-hover">NUSANTARA CLIMATE PULSE</strong> - IPBA KELOMPOK 2</p>
+        </div>
+    </footer>
+
+    <!-- FOOTER KREDIT DI POJOK KANAN BAWAH -->
+    <div class="footer-credit">dikembangkan oleh SFA</div>
+
+    <script>
+        // --- AWAL LOGIKA INTERAKTIF (JAVASCRIPT) ---
+        
+        // Variabel global untuk menyimpan objek
+        let map, oniChart, sstAnomalyChart, soiChart, provinceLayer;
+        
+        // Fungsi untuk menampilkan pesan error
+        function showError(message) {
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'error-message';
+            errorContainer.textContent = message;
+            document.body.appendChild(errorContainer);
+            
+            // Auto-remove setelah 5 detik
+            setTimeout(() => {
+                if (errorContainer.parentNode) {
+                    errorContainer.parentNode.removeChild(errorContainer);
+                }
+            }, 5000);
+        }
+        
+        // Fungsi untuk memeriksa apakah library telah dimuat
+        function checkLibraries() {
+            if (typeof L === 'undefined') {
+                console.error('Leaflet library not loaded');
+                return false;
+            }
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js library not loaded');
+                return false;
+            }
+            return true;
+        }
+        
+        // Data historis untuk setiap tahun
+        const historicalData = {
+            0: { // 1950
+                year: "1950 (Netral)",
+                oniData: [0.2, 0.1, 0.1, 0.2, 0.1, 0.2, 0.1, 0.2, 0.1, 0.2, 0.1, 0.2],
+                sstData: {
+                    "Niño 1+2": [0.5, 0.4, 0.3, 0.4, 0.5, 0.4, 0.3, 0.4, 0.5, 0.4, 0.3, 0.4],
+                    "Niño 3": [0.4, 0.3, 0.2, 0.3, 0.4, 0.3, 0.2, 0.3, 0.4, 0.3, 0.2, 0.3],
+                    "Niño 3.4": [0.3, 0.2, 0.1, 0.2, 0.3, 0.2, 0.1, 0.2, 0.3, 0.2, 0.1, 0.2],
+                    "Niño 4": [0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1]
+                },
+                soiData: [5, 3, 2, 4, 6, 3, 2, 4, 5, 3, 2, 4],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -10, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -15, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -5, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -8, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -5, coords: [-4, 120] }
+                ]
+            },
+            1: { // 1957-1958
+                year: "1957-1958 (El Niño Sedang)",
+                oniData: [0.6, 0.7, 0.8, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6],
+                sstData: {
+                    "Niño 1+2": [1.2, 1.3, 1.4, 1.5, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9],
+                    "Niño 3": [1.0, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7],
+                    "Niño 3.4": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 4": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
+                },
+                soiData: [-5, -8, -10, -12, -14, -12, -10, -8, -6, -5, -4, -3],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -35, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -45, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -25, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -30, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -20, coords: [-4, 120] }
+                ]
+            },
+            2: { // 1965-1966
+                year: "1965-1966 (El Niño Sedang)",
+                oniData: [0.5, 0.6, 0.8, 1.0, 1.2, 1.3, 1.2, 1.1, 0.9, 0.7, 0.6, 0.5],
+                sstData: {
+                    "Niño 1+2": [1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8],
+                    "Niño 3": [0.9, 1.0, 1.1, 1.2, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6],
+                    "Niño 3.4": [0.7, 0.8, 0.9, 1.0, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4],
+                    "Niño 4": [0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2]
+                },
+                soiData: [-4, -7, -9, -11, -13, -11, -9, -7, -5, -4, -3, -2],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -30, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -40, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -20, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -25, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -15, coords: [-4, 120] }
+                ]
+            },
+            3: { // 1972-1973
+                year: "1972-1973 (El Niño Sedang)",
+                oniData: [0.7, 0.9, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.0, 0.8, 0.7, 0.6],
+                sstData: {
+                    "Niño 1+2": [1.3, 1.4, 1.5, 1.6, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0],
+                    "Niño 3": [1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8],
+                    "Niño 3.4": [0.9, 1.0, 1.1, 1.2, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6],
+                    "Niño 4": [0.7, 0.8, 0.9, 1.0, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
+                },
+                soiData: [-6, -9, -11, -13, -15, -13, -11, -9, -7, -6, -5, -4],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -40, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -50, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -30, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -35, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -25, coords: [-4, 120] }
+                ]
+            },
+            4: { // 1976-1977
+                year: "1976-1977 (El Niño Lemah)",
+                oniData: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                sstData: {
+                    "Niño 1+2": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 3": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 3.4": [0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                    "Niño 4": [0.3, 0.4, 0.5, 0.6, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1]
+                },
+                soiData: [-3, -5, -7, -9, -11, -9, -7, -5, -3, -2, -1, 0],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -20, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -25, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -15, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -18, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -12, coords: [-4, 120] }
+                ]
+            },
+            5: { // 1982-1983
+                year: "1982-1983 (El Niño Kuat)",
+                oniData: [0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.2, 2.3, 2.2, 2.0, 1.8, 1.5],
+                sstData: {
+                    "Niño 1+2": [1.6, 1.8, 2.0, 2.2, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7],
+                    "Niño 3": [1.4, 1.6, 1.8, 2.0, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5],
+                    "Niño 3.4": [1.2, 1.4, 1.6, 1.8, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3],
+                    "Niño 4": [1.0, 1.2, 1.4, 1.6, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1]
+                },
+                soiData: [-8, -12, -15, -18, -20, -18, -15, -12, -10, -8, -6, -5],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -60, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -75, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -45, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -55, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -40, coords: [-4, 120] }
+                ]
+            },
+            6: { // 1986-1987
+                year: "1986-1987 (El Niño Sedang)",
+                oniData: [0.5, 0.6, 0.8, 1.0, 1.2, 1.3, 1.2, 1.1, 0.9, 0.7, 0.6, 0.5],
+                sstData: {
+                    "Niño 1+2": [1.0, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7],
+                    "Niño 3": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 3.4": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+                },
+                soiData: [-4, -7, -9, -11, -13, -11, -9, -7, -5, -4, -3, -2],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -35, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -45, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -25, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -30, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -20, coords: [-4, 120] }
+                ]
+            },
+            7: { // 1991-1992
+                year: "1991-1992 (El Niño Sedang)",
+                oniData: [0.6, 0.7, 0.9, 1.1, 1.3, 1.4, 1.3, 1.2, 1.0, 0.8, 0.7, 0.6],
+                sstData: {
+                    "Niño 1+2": [1.2, 1.3, 1.4, 1.5, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9],
+                    "Niño 3": [1.0, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7],
+                    "Niño 3.4": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 4": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
+                },
+                soiData: [-5, -8, -10, -12, -14, -12, -10, -8, -6, -5, -4, -3],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -40, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -50, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -30, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -35, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -25, coords: [-4, 120] }
+                ]
+            },
+            8: { // 1994-1995
+                year: "1994-1995 (El Niño Lemah)",
+                oniData: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                sstData: {
+                    "Niño 1+2": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 3": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 3.4": [0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                    "Niño 4": [0.3, 0.4, 0.5, 0.6, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1]
+                },
+                soiData: [-3, -5, -7, -9, -11, -9, -7, -5, -3, -2, -1, 0],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -25, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -30, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -18, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -22, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -15, coords: [-4, 120] }
+                ]
+            },
+            9: { // 1997-1998
+                year: "1997-1998 (El Niño Kuat)",
+                oniData: [0.9, 1.1, 1.4, 1.7, 2.0, 2.3, 2.5, 2.4, 2.2, 1.9, 1.6, 1.3],
+                sstData: {
+                    "Niño 1+2": [1.8, 2.0, 2.2, 2.4, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9],
+                    "Niño 3": [1.6, 1.8, 2.0, 2.2, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7],
+                    "Niño 3.4": [1.4, 1.6, 1.8, 2.0, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5],
+                    "Niño 4": [1.2, 1.4, 1.6, 1.8, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3]
+                },
+                soiData: [-10, -14, -17, -20, -22, -20, -17, -14, -12, -10, -8, -6],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -70, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -85, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -55, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -65, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -50, coords: [-4, 120] }
+                ]
+            },
+            10: { // 2002-2003
+                year: "2002-2003 (El Niño Sedang)",
+                oniData: [0.5, 0.7, 0.9, 1.1, 1.3, 1.4, 1.3, 1.2, 1.0, 0.8, 0.6, 0.5],
+                sstData: {
+                    "Niño 1+2": [1.0, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7],
+                    "Niño 3": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 3.4": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+                },
+                soiData: [-4, -7, -9, -11, -13, -11, -9, -7, -5, -4, -3, -2],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -35, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -45, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -25, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -30, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -20, coords: [-4, 120] }
+                ]
+            },
+            11: { // 2004-2005
+                year: "2004-2005 (El Niño Lemah)",
+                oniData: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                sstData: {
+                    "Niño 1+2": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 3": [0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                    "Niño 3.4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
+                    "Niño 4": [0.2, 0.3, 0.4, 0.5, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.0]
+                },
+                soiData: [-2, -4, -6, -8, -10, -8, -6, -4, -2, -1, 0, 1],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -20, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -25, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -15, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -18, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -12, coords: [-4, 120] }
+                ]
+            },
+            12: { // 2009-2010
+                year: "2009-2010 (El Niño Sedang)",
+                oniData: [0.5, 0.7, 0.9, 1.1, 1.3, 1.4, 1.3, 1.2, 1.0, 0.8, 0.6, 0.5],
+                sstData: {
+                    "Niño 1+2": [1.0, 1.1, 1.2, 1.3, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7],
+                    "Niño 3": [0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+                    "Niño 3.4": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+                },
+                soiData: [-4, -7, -9, -11, -13, -11, -9, -7, -5, -4, -3, -2],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -35, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -45, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -25, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -30, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -20, coords: [-4, 120] }
+                ]
+            },
+            13: { // 2015-2016
+                year: "2015-2016 (El Niño Kuat)",
+                oniData: [0.8, 1.0, 1.3, 1.6, 1.9, 2.1, 2.3, 2.2, 2.0, 1.7, 1.4, 1.1],
+                sstData: {
+                    "Niño 1+2": [1.6, 1.8, 2.0, 2.2, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7],
+                    "Niño 3": [1.4, 1.6, 1.8, 2.0, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5],
+                    "Niño 3.4": [1.2, 1.4, 1.6, 1.8, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3],
+                    "Niño 4": [1.0, 1.2, 1.4, 1.6, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1]
+                },
+                soiData: [-8, -12, -15, -18, -20, -18, -15, -12, -10, -8, -6, -5],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -65, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -80, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -45, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -55, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -40, coords: [-4, 120] }
+                ]
+            },
+            14: { // 2018-2019
+                year: "2018-2019 (El Niño Lemah)",
+                oniData: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                sstData: {
+                    "Niño 1+2": [0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+                    "Niño 3": [0.5, 0.6, 0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+                    "Niño 3.4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
+                    "Niño 4": [0.2, 0.3, 0.4, 0.5, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.1, 0.0]
+                },
+                soiData: [-2, -4, -6, -8, -10, -8, -6, -4, -2, -1, 0, 1],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -20, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -25, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -15, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -18, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -12, coords: [-4, 120] }
+                ]
+            },
+            15: { // 2023-2024
+                year: "2023-2024 (El Niño Sedang)",
+                oniData: [0.4, 0.5, 0.6, 0.8, 1.0, 1.1, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+                sstData: {
+                    "Niño 1+2": [1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.1, 2.2, 2.3, 2.2, 2.0, 1.8],
+                    "Niño 3": [0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.0, 2.1, 2.2, 2.1, 1.9, 1.7],
+                    "Niño 3.4": [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 1.9, 2.0, 2.1, 2.0, 1.8, 1.6],
+                    "Niño 4": [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.1, 1.0, 0.8]
+                },
+                soiData: [-3, -5, -8, -12, -15, -18, -20, -18, -16, -14, -10, -7],
+                provinces: [
+                    { name: "Jawa Timur", anomaly: -65, coords: [-7.5, 112.5] }, 
+                    { name: "Nusa Tenggara Barat", anomaly: -80, coords: [-8.5, 116.5] }, 
+                    { name: "Kalimantan Tengah", anomaly: -45, coords: [-1.5, 113.5] }, 
+                    { name: "Sumatera Selatan", anomaly: -55, coords: [-3, 104] }, 
+                    { name: "Sulawesi Selatan", anomaly: -40, coords: [-4, 120] }
+                ]
+            }
+        };
+        
+        // Fungsi untuk menginisialisasi dashboard
+        function initDashboard() {
+            if (!checkLibraries()) {
+                showError('Library eksternal tidak dapat dimuat. Silakan periksa koneksi internet Anda.');
+                return;
+            }
+            
+            const chartOptions = { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                animation: { duration: 750, easing: 'easeInOutQuart' } 
+            };
+
+            // Periksa apakah container peta ada
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) {
+                console.error('Map container not found');
+                showError('Elemen peta tidak ditemukan. Halaman tidak dapat dimuat dengan benar.');
+                return;
+            }
+            
+            // Inisialisasi peta
+            try {
+                map = L.map('map').setView([-2.5, 118], 5);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+                    attribution: '© OpenStreetMap contributors © CARTO', 
+                    subdomains: 'abcd', 
+                    maxZoom: 20 
+                }).addTo(map);
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                showError('Gagal memuat peta. Silakan muat ulang halaman.');
+                return;
+            }
+
+            // Periksa apakah container grafik ada
+            const oniChartContainer = document.getElementById('oniChart');
+            const sstChartContainer = document.getElementById('sstAnomalyChart');
+            const soiChartContainer = document.getElementById('soiChart');
+            
+            if (!oniChartContainer || !sstChartContainer || !soiChartContainer) {
+                console.error('Chart containers not found');
+                showError('Elemen grafik tidak ditemukan. Halaman tidak dapat dimuat dengan benar.');
+                return;
+            }
+            
+            // Inisialisasi grafik ONI
+            try {
+                oniChart = new Chart(oniChartContainer.getContext('2d'), { 
+                    type: 'line', 
+                    data: { 
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'], 
+                        datasets: [{ 
+                            label: 'Indeks ONI', 
+                            data: historicalData[15].oniData, 
+                            borderColor: '#ff7f00', 
+                            backgroundColor: 'rgba(255, 127, 0, 0.2)', 
+                            tension: 0.4, 
+                            fill: true 
+                        }] 
+                    }, 
+                    options: { 
+                        ...chartOptions, 
+                        scales: { 
+                            y: { 
+                                beginAtZero: false, 
+                                title: { display: true, text: 'Indeks (°C)' }, 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            }, 
+                            x: { 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            } 
+                        }, 
+                        plugins: { 
+                            legend: { labels: { color: '#e0e0e0' } } 
+                        } 
+                    } 
+                });
+            } catch (error) {
+                console.error('Error initializing ONI chart:', error);
+                showError('Gagal memuat grafik ONI. Silakan muat ulang halaman.');
+                return;
+            }
+
+            // Inisialisasi grafik SST Anomaly
+            try {
+                const sstDatasets = [];
+                const colors = {
+                    "Niño 1+2": 'rgba(255, 99, 132, 1)',
+                    "Niño 3": 'rgba(54, 162, 235, 1)',
+                    "Niño 3.4": 'rgba(255, 206, 86, 1)',
+                    "Niño 4": 'rgba(75, 192, 192, 1)'
+                };
+                
+                for (const region in historicalData[15].sstData) {
+                    sstDatasets.push({
+                        label: region,
+                        data: historicalData[15].sstData[region],
+                        borderColor: colors[region],
+                        backgroundColor: colors[region].replace('1)', '0.2)'),
+                        tension: 0.4,
+                        fill: false
+                    });
+                }
+                
+                sstAnomalyChart = new Chart(sstChartContainer.getContext('2d'), { 
+                    type: 'line', 
+                    data: { 
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'], 
+                        datasets: sstDatasets
+                    }, 
+                    options: { 
+                        ...chartOptions, 
+                        scales: { 
+                            y: { 
+                                title: { display: true, text: 'Anomali (°C)' }, 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            }, 
+                            x: { 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            } 
+                        }, 
+                        plugins: { 
+                            legend: { labels: { color: '#e0e0e0' } } 
+                        } 
+                    } 
+                });
+            } catch (error) {
+                console.error('Error initializing SST chart:', error);
+                showError('Gagal memuat grafik SST. Silakan muat ulang halaman.');
+                return;
+            }
+
+            // Inisialisasi grafik SOI
+            try {
+                soiChart = new Chart(soiChartContainer.getContext('2d'), { 
+                    type: 'bar', 
+                    data: { 
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'], 
+                        datasets: [{ 
+                            label: 'Indeks SOI', 
+                            data: historicalData[15].soiData, 
+                            backgroundColor: 'rgba(0, 255, 255, 0.5)', 
+                            borderColor: '#00ffff', 
+                            borderWidth: 1 
+                        }] 
+                    }, 
+                    options: { 
+                        ...chartOptions, 
+                        scales: { 
+                            y: { 
+                                title: { display: true, text: 'Indeks SOI' }, 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            }, 
+                            x: { 
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                                ticks: { color: '#e0e0e0' } 
+                            } 
+                        }, 
+                        plugins: { 
+                            legend: { labels: { color: '#e0e0e0' } } 
+                        } 
+                    } 
+                });
+            } catch (error) {
+                console.error('Error initializing SOI chart:', error);
+                showError('Gagal memuat grafik SOI. Silakan muat ulang halaman.');
+                return;
+            }
+            
+            // Inisialisasi peta dengan data provinsi
+            try {
+                updateMap(15);
+            } catch (error) {
+                console.error('Error initializing map markers:', error);
+                showError('Gagal memuat marker peta. Silakan muat ulang halaman.');
+            }
+        }
+        
+        // Fungsi untuk memperbarui peta berdasarkan data
+        function updateMap(dataIndex) {
+            if (!map) return;
+            
+            // Hapus layer provinsi yang ada
+            if (provinceLayer) {
+                map.removeLayer(provinceLayer);
+            }
+            
+            const provinces = historicalData[dataIndex].provinces;
+            
+            // Buat fitur untuk setiap provinsi
+            const features = provinces.map(p => ({ 
+                type: "Feature", 
+                properties: { name: p.name, rainfall_anomaly: p.anomaly }, 
+                geometry: { type: "Point", coordinates: [p.coords[1], p.coords[0]] } 
+            }));
+            
+            provinceLayer = L.geoJSON({ 
+                type: "FeatureCollection", 
+                features: features 
+            }, {
+                pointToLayer: (f, ll) => {
+                    const anomaly = f.properties.rainfall_anomaly;
+                    let fillColor;
+                    
+                    if (anomaly > 50) {
+                        fillColor = '#08519c';
+                    } else if (anomaly > 20) {
+                        fillColor = '#3182bd';
+                    } else if (anomaly > 0) {
+                        fillColor = '#fee08b';
+                    } else if (anomaly > -30) {
+                        fillColor = '#fd8d3c';
+                    } else if (anomaly > -60) {
+                        fillColor = '#e31a1c';
+                    } else {
+                        fillColor = '#800026';
+                    }
+                    
+                    return L.circleMarker(ll, { 
+                        radius: 15, 
+                        fillColor: fillColor, 
+                        color: "#fff", 
+                        weight: 1, 
+                        opacity: 1, 
+                        fillOpacity: 0.8 
+                    });
+                },
+                onEachFeature: (f, l) => {
+                    l.bindPopup(`<b>${f.properties.name}</b><br>Anomali Curah Hujan: ${f.properties.rainfall_anomaly}%`);
+                }
+            }).addTo(map);
+        }
+        
+        // Fungsi untuk memperbarui grafik berdasarkan data
+        function updateCharts(dataIndex) {
+            const data = historicalData[dataIndex];
+            
+            // Update grafik ONI
+            if (oniChart) {
+                oniChart.data.datasets[0].data = data.oniData;
+                oniChart.update();
+            }
+            
+            // Update grafik SST
+            if (sstAnomalyChart) {
+                let i = 0;
+                for (const region in data.sstData) {
+                    sstAnomalyChart.data.datasets[i].data = data.sstData[region];
+                    i++;
+                }
+                sstAnomalyChart.update();
+            }
+            
+            // Update grafik SOI
+            if (soiChart) {
+                soiChart.data.datasets[0].data = data.soiData;
+                soiChart.update();
+            }
+        }
+        
+        // Fungsi utama yang dijalankan saat DOM dimuat
+        function main() {
+            try {
+                // --- INTERSECTION OBSERVER FOR FADE-IN ANIMATIONS ---
+                const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
+                const observer = new IntersectionObserver((entries, observer) => { 
+                    entries.forEach(entry => { 
+                        if (entry.isIntersecting) { 
+                            entry.target.classList.add('visible'); 
+                            observer.unobserve(entry.target); 
+                        } 
+                    }); 
+                }, observerOptions);
+                const elementsToObserve = document.querySelectorAll('.fade-in-up');
+                elementsToObserve.forEach(el => { observer.observe(el); });
+
+                // --- EVENT LISTENERS ---
+                const timelineSlider = document.getElementById('timelineSlider');
+                if (timelineSlider) {
+                    timelineSlider.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value);
+                        const data = historicalData[value];
+                        
+                        // Update label tahun
+                        const yearLabelElement = document.getElementById('selectedYearLabel');
+                        if (yearLabelElement) {
+                            yearLabelElement.innerHTML = `Tahun yang Dipilih: <strong>${data.year}</strong>`;
+                        }
+                        
+                        // Update grafik dan peta
+                        updateCharts(value);
+                        updateMap(value);
+                    });
+                }
+                
+                // --- INITIALIZE DASHBOARD ---
+                // Tunggu beberapa saat untuk memastikan semua library dimuat
+                setTimeout(() => {
+                    initDashboard();
+                }, 1000);
+            } catch (error) {
+                console.error('Error initializing application:', error);
+                showError('Terjadi kesalahan saat memuat halaman. Silakan muat ulang halaman.');
+            }
+        }
+        
+        // Jalankan fungsi utama saat DOM dimuat
+        document.addEventListener('DOMContentLoaded', main);
+    </script>
+
+</body>
+</html>
